@@ -10,6 +10,8 @@ import os
 import json
 from collections import defaultdict
 import time
+from tqdm import tqdm
+import torchvision.transforms as T
 
 from helper import AllOf
 
@@ -169,6 +171,158 @@ def parse_json_arg(arg:str) -> object:
     except ValueError:
         return arg
 
+def sphere_tracing(runner, name, N = 512, dist_threshold = 1.0e-3):
+
+    print('Starting Sphere Tracing...')
+
+    time.perf_counter()
+    runner.network.cuda()
+
+    pos_cpu = torch.zeros(N * N, 3, requires_grad=True)
+    
+    path = 'runs/sphere_tracing/'
+
+    with torch.no_grad():
+        # rays initialization
+        for i in tqdm(range(0, N), 'Rays initialization'):
+            for j in range(0, N):
+                # Orthogonal projection using Normalized Device Coordinates.
+                # if name == 'lucy':
+                #     pos_cpu[i * N + j, 0] = i / N - 0.5 
+                #     pos_cpu[i * N + j, 1] = 0.6
+                #     pos_cpu[i * N + j, 2] = j / N - 0.5
+                # else:
+                #     pos_cpu[i * N + j, 0] = i / N - 0.5 
+                #     pos_cpu[i * N + j, 1] = j / N - 0.5
+                    
+                #     if name == 'bunny' or name == 'buddha':
+                #         pos_cpu[i * N + j, 2] = 0.6
+                #     else:
+                #         pos_cpu[i * N + j, 2] = -0.6
+                pos_cpu[i * N + j, 0] = 2 * i / N - 1.0 
+                pos_cpu[i * N + j, 1] = 2 * j / N - 1.0
+                pos_cpu[i * N + j, 2] = -0.6
+
+        pos_gpu = pos_cpu.cuda()
+        
+        # if name == 'lucy':
+        #     dir = torch.tensor([0.0, -1.0, 0.0]).cuda()
+        # elif name == 'bunny' or name == 'buddha':
+        #     dir = torch.tensor([0.0, 0.0, -1.0]).cuda()
+        # else:
+        #     dir = torch.tensor([0.0, 0.0, 1.0]).cuda()
+        dir = torch.tensor([0.0, 0.0, 1.0]).cuda()
+        #dir = torch.tensor([1.0, 0.0, 0.0]).cuda()
+
+        distances = torch.zeros(N * N, 1).cuda()
+        transform = T.ToPILImage()
+
+        start_time = time.perf_counter()
+
+        for j in tqdm(range(0, 100), 'Sphere tracing'):
+            # infer distance
+            model_input = {'coords': pos_gpu, 'normal_out': None, 'sdf_out': None,
+                           'pointcloud': None, 'detach': True, 'istrain': False, 'epoch': 0,
+                           'iteration': 0, 'progress' : 0.0, 'force_run': False}
+            distances = runner.network(model_input)['sdf']
+
+            # update pos
+            pos_gpu = torch.clamp(
+                pos_gpu + torch.mul(distances, dir),
+                -1.0,
+                1.0
+            )
+        
+        img = transform(torch.reshape(distances, (1, N, N)))
+        img = img.rotate(90)
+        os.makedirs(path, exist_ok=True)
+        img.save(path + name + '.png')
+
+    D = torch.cat((distances, distances, distances), dim=-1)
+
+    pbar_str = 'Normals'
+    
+    # Normals.
+    with tqdm(total=200, desc=pbar_str) as pbar:
+        result = runner.network(model_input)
+        sdf, xyz = result['sdf'], result['detached']
+        grad = torch.autograd.grad([sdf], [xyz], torch.ones_like(sdf), retain_graph=False)[0]
+        #sdf, xyz, grad = result['base'], result['detached'], result['base_normal']
+
+        pbar.update(70)
+
+        with torch.no_grad():
+            # Normalization and distance condition
+            grad_norm = torch.linalg.norm(grad, dim=-1)
+
+            unit_grad = grad/grad_norm.unsqueeze(-1)
+            unit_grad = torch.abs(unit_grad)
+
+            unit_grad = torch.where(D<=dist_threshold, unit_grad, torch.ones_like(unit_grad))
+
+            pbar.update(30)
+
+    # Rendering
+    with torch.no_grad():
+        with tqdm(total=100, desc='Rendering') as pbar:
+            k_s = 0.5
+            k_d = 1.0
+            k_a = 1.0
+            shininess = 35.0
+
+            ambient = torch.tensor([0.2, 0.2, 0.2]).cuda()
+            specular = torch.tensor([1.0, 1.0, 1.0]).cuda()
+            diffuse = torch.tensor([0.54, 0.54, 0.54]).cuda()
+
+            # if name == 'lucy':
+            #     light_dir = torch.tensor([0.0, 1.0, 0.0]).cuda()
+            # else:
+            #     light_dir = torch.tensor([0.0, 0.0, 1.0]).cuda()
+            light_dir = torch.tensor([0.0, 0.0, 1.0]).cuda()
+            
+            pbar.update(20)
+
+            n = unit_grad
+            dot_d = torch.matmul(n, light_dir)
+            dot_d = torch.unsqueeze(dot_d, -1)
+
+            reflection = 2.0 * dot_d * n - light_dir
+
+            pbar.update(40)
+
+            dot_d = torch.maximum(dot_d, torch.zeros_like(dot_d))
+
+            dot_s = torch.matmul(reflection, dir)
+            dot_s = torch.unsqueeze(dot_s, -1)
+            dot_s = torch.maximum(dot_s, torch.zeros_like(dot_s))**shininess
+
+            color = k_a * ambient + k_d * diffuse * dot_d  + k_s * specular * dot_s
+            color = torch.clamp(color, max=1.0)
+
+            color = torch.where(D<=dist_threshold, color, torch.ones_like(color))
+
+            pbar.update(40)
+    
+        frame_time = time.perf_counter() - start_time 
+
+        image_inputs = {'normals' : n, 'colors' : color}
+
+        for key in tqdm(image_inputs, 'Saving results into ./results'):
+            transposed = torch.transpose(image_inputs[key], 0, 1)
+            
+            img = transform(torch.reshape(transposed, (3, N, N)))
+            img = img.rotate(90)
+
+            # if multiscale is False and normal_mapping is False:
+            #     file_name = '%s_%s_LOD_%d_baseline' % (name, key, lod)
+            # else:
+            #     file_name = '%s_%s_LOD_%d_multiscale_%s_mapping_%s' % (name, key, lod, multiscale, normal_mapping)
+
+            file_name = '%s_%s' % (name, key)
+            img.save(path + file_name + '.png')
+
+        return {'name': file_name, 'time(s)' : frame_time}
+
 if __name__ == "__main__":
     import sys
     if(len(sys.argv) > 1):
@@ -242,5 +396,8 @@ if __name__ == "__main__":
             sys.exit(-1)
 
     runner = Runner(json_obj)
+
     runner.run()
+    sphere_tracing(runner, name='armadillo')
+    
     sys.exit(0)

@@ -29,6 +29,7 @@ dependencies:
   - pytorch-cluster
   - pytorch-scatter
   - pykdtree
+  - tqdm
   - pip:
     - pysdf
     - pymeshlab
