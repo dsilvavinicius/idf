@@ -73,8 +73,8 @@
         {"type":"Contour", "axis":0, "frequency": 20,"resolution":500, "name":"levelset_X", "attributes":["sdf","residual","base"]},
         {"type":"Contour", "axis":1, "frequency": 20,"resolution":500, "name":"levelset_Y", "attributes":["sdf","residual","base"]},
         {"type":"Contour", "axis":2, "frequency": 20,"resolution":500, "name":"levelset_Z", "attributes":["sdf","residual","base"]},
-        {"type":"Mesh", "name":"mesh_HighRes", "frequency":30, "compute_chamfer":true, "resolution":512},
-        {"type":"Mesh", "name":"mesh_base_HighRes", "frequency":30, "resolution":512, "attribute":"base"},
+        {"type":"Mesh", "name":"mesh_HighRes", "frequency":30, "compute_chamfer":true, "resolution":64},
+        {"type":"Mesh", "name":"mesh_base_HighRes", "frequency":30, "resolution":64, "attribute":"base"},
         {"type":"Scalar","name":"scalar", "attributes" : ["base_sdf_loss","base_grad_loss","base_inter_loss","base_normal_loss","sdf_loss","grad_loss","inter_loss","normal_loss"]},
         {"type":"Mesh",   "axis":2,   "name":"mesh_HighRes_final", "frequency":120, "compute_chamfer":true, "resolution":512,"batch_size":50000}
     ]
