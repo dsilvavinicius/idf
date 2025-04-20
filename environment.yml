@@ -9,8 +9,7 @@ dependencies:
   - blas=1.0
   - cudatoolkit=11.1
   - intel-openmp=2020.2
-  - numpy=1.19.5
-  - pillow=8.2.0
+  - numpy<1.20
   - pip=21.0.1
   - python=3.8.8
   - pytorch=1.8.1
@@ -19,9 +18,9 @@ dependencies:
   - scikit-image>=0.19.3
   - scikit-learn
   - scipy
-  - tensorboard=2.5.0
-  - tensorboard-data-server=0.6.0
-  - tensorboard-plugin-wit=1.8.0
+  - tensorboard=2.13.0
+  - tensorboard-data-server
+  - tensorboard-plugin-wit
   - trimesh
   - imageio
   - matplotlib
@@ -31,6 +30,7 @@ dependencies:
   - pykdtree
   - tqdm
   - pip:
+    - pillow==8.2.0
     - pysdf
     - pymeshlab
     - pyrender

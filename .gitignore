@@ -11,3 +11,4 @@
 
 /net/experiments/**/*.json
 lsf.*
+*.log

@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import trimesh
 from skimage import measure
+import time
 
 
 def get_grid_uniform(resolution, box_side_length=2.0):
@@ -65,6 +66,7 @@ def get_surface_high_res_mesh(sdf_func, resolution=100, box_side_length=2.0, lar
     helper = torch.bmm(vecs.unsqueeze(0).repeat(recon_pc.shape[0], 1, 1),
                        (recon_pc - s_mean).unsqueeze(-1)).squeeze()
 
+    print("Getting grid with resolution", resolution)
     grid_aligned = get_grid(helper.cpu(), resolution)
 
     grid_points = grid_aligned['grid_points']
@@ -78,9 +80,12 @@ def get_surface_high_res_mesh(sdf_func, resolution=100, box_side_length=2.0, lar
     # MC to new grid
     points = grid_points
     z = []
+    print("Sampling SDF on grid...")
+    start_time = time.perf_counter()
     for i, pnts in enumerate(torch.split(points, 50000, dim=0)):
         z.append(sdf_func(pnts.cuda()).detach().cpu().numpy())
     z = np.concatenate(z, axis=0)
+    print("Sampling time: ", time.perf_counter() - start_time)
 
     meshexport = None
     if (not (np.min(z) > 0 or np.max(z) < 0)):
