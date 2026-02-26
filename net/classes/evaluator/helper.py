@@ -49,7 +49,7 @@ def get_surface_high_res_mesh(sdf_func, resolution=100, box_side_length=2.0, lar
 
     if largest_component:
         components = mesh_low_res.split(only_watertight=False)
-        areas = np.array([c.area for c in components], dtype=np.float)
+        areas = np.array([c.area for c in components], dtype=np.float64)
         mesh_low_res = components[areas.argmax()]
 
     recon_pc = trimesh.sample.sample_surface(mesh_low_res, 10000)[0]
@@ -59,7 +59,8 @@ def get_surface_high_res_mesh(sdf_func, resolution=100, box_side_length=2.0, lar
     s_mean = recon_pc.mean(dim=0)
     s_cov = recon_pc - s_mean
     s_cov = torch.mm(s_cov.transpose(0, 1), s_cov)
-    vecs = torch.eig(s_cov, True)[1].transpose(0, 1)
+    _, vecs = torch.linalg.eigh(s_cov)
+    vecs = vecs.transpose(0, 1)
     if torch.det(vecs) < 0:
         vecs = torch.mm(torch.tensor(
             [[1, 0, 0], [0, 0, 1], [0, 1, 0]]).cuda().float(), vecs)
@@ -109,7 +110,7 @@ def get_surface_high_res_mesh(sdf_func, resolution=100, box_side_length=2.0, lar
 
     if largest_component:
         components = meshexport.split(only_watertight=False)
-        areas = np.array([c.area for c in components], dtype=np.float)
+        areas = np.array([c.area for c in components], dtype=np.float64)
         meshexport = components[areas.argmax()]
 
     return meshexport

@@ -34,12 +34,12 @@ class Mesh(Evaluator):
                 resolution=self.resolution, box_side_length=bbox_size, largest_component=False)
             if not mesh.is_empty:
                 return np.array(mesh.vertices), np.array(mesh.faces), np.array(mesh.vertex_normals)
-            return np.array([[0,0,0]],dtype=np.float),np.array([[0,0,0]],dtype=np.float),np.array([[0,0,0]],dtype=np.float)
+            return np.array([[0,0,0]],dtype=np.float64),np.array([[0,0,0]],dtype=np.float64),np.array([[0,0,0]],dtype=np.float64)
         except Exception as e:
             tb = sys.exc_info()[2]
             self.runner.py_logger.error(repr(e))
 
-            return np.array([[0,0,0]],dtype=np.float),np.array([[0,0,0]],dtype=np.float),np.array([[0,0,0]],dtype=np.float)
+            return np.array([[0,0,0]],dtype=np.float64),np.array([[0,0,0]],dtype=np.float64),np.array([[0,0,0]],dtype=np.float64)
 
 
     def epoch_hook(self, epoch, data: Dict =None):

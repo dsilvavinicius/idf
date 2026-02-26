@@ -134,7 +134,7 @@ class Network(torch.nn.Module, ConfigObject):
             return np.array(mesh.vertices), np.array(mesh.faces), np.array(mesh.vertex_normals)
         except Exception as e:
             self.runner.logger.warn(repr(e))
-            return np.array([[0,0,0]],dtype=np.float),np.array([[0,0,0]],dtype=np.float),np.array([[0,0,0]],dtype=np.float)
+            return np.array([[0,0,0]],dtype=np.float64),np.array([[0,0,0]],dtype=np.float64),np.array([[0,0,0]],dtype=np.float64)
 
     def save(self, path):
         self.runner.error(f"{type(self).__name__} doesn't implement saving")
