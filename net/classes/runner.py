@@ -51,9 +51,16 @@ class Runner(ConfigObject):
         self.evaluator : "Evaluator" = None
         self.data_path : str = "./"
         self.name = name
+        self.output_folder : str = None
         self.perf_test = False
 
         super().__init__(config)
+
+        # Allow overriding the output folder via config
+        if self.output_folder is not None:
+            self.folder = self.output_folder
+            mkdir(self.folder)
+
         if(self.perf_test):
             self.evaluators =  AllOf([])
             self.loggers = AllOf([])
