@@ -56,5 +56,9 @@ class Mesh(Evaluator):
             self.runner.sampling_resolution = self.resolution
             if(self.compute_chamfer):
                 Compute_Chamfer(trimesh.Trimesh(verts.astype(np.float32),faces),self.runner,f"{self.name}_chamfer_{{0}}_{{1}}", True)
+
+            if hasattr(self.runner, 'data') and hasattr(self.runner.data, 'denormalize_np'):
+                verts = self.runner.data.denormalize_np(verts)
+
             self.runner.logger.log_mesh(self.name, verts.reshape([1, -1, 3]),
                                         faces.reshape([1, -1, 3]))

@@ -38,6 +38,9 @@ class CDataset(Dataset, ConfigObject):
             scale = torch.norm(coords,dim=1).max()
             coords /= scale
             coords *= (self.bbox_size/2 * (1 - self.padding))
+            if not hasattr(self, 'coord_center'):
+                self.coord_center = coord_center
+                self.scale = scale
             return coord_center, scale
 
         coord_max = torch.max(coords, dim=0, keepdims=True)[0]
@@ -56,6 +59,10 @@ class CDataset(Dataset, ConfigObject):
             normals *= scale
             normals /= torch.norm(normals, dim=-1, keepdim=True)
 
+        if not hasattr(self, 'coord_center'):
+            self.coord_center = coord_center
+            self.scale = scale
+
         return coord_center, scale
 
     def normalize_np(self, coords):
@@ -71,5 +78,42 @@ class CDataset(Dataset, ConfigObject):
         coords /= scale
         coords *= (self.bbox_size * (1 - self.padding))
 
+        if not hasattr(self, 'coord_center'):
+            self.coord_center = coord_center
+            self.scale = scale
+
         return coord_center, scale
+
+    def denormalize(self, coords):
+        if not self.do_normalize or not hasattr(self, 'coord_center'):
+            return coords
+
+        if self.sphere_normalization:
+            coords = coords / (self.bbox_size / 2 * (1 - self.padding))
+            coords = coords * self.scale
+            coords = coords + self.coord_center
+            return coords
+
+        coords = coords / (self.bbox_size * (1 - self.padding))
+        coords = coords * self.scale
+        coords = coords + self.coord_center
+        return coords
+
+    def denormalize_np(self, coords):
+        if not self.do_normalize or not hasattr(self, 'coord_center'):
+            return coords
+
+        coord_center_np = self.coord_center.cpu().numpy() if torch.is_tensor(self.coord_center) else self.coord_center
+        scale_np = self.scale.cpu().numpy() if torch.is_tensor(self.scale) else self.scale
+
+        if self.sphere_normalization:
+            coords = coords / (self.bbox_size / 2 * (1 - self.padding))
+            coords = coords * scale_np
+            coords = coords + coord_center_np
+            return coords
+
+        coords = coords / (self.bbox_size * (1 - self.padding))
+        coords = coords * scale_np
+        coords = coords + coord_center_np
+        return coords
 
