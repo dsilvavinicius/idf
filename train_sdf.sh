@@ -67,3 +67,22 @@ else
     echo "Warning: Could not find the final detailed mesh (mesh_mesh_HighRes_final_*.ply) in $TRAIN_DIR"
     exit 1
 fi
+
+# Write statistics CSV
+STATS_JSON=$(find "$TRAIN_DIR" -name "statistics.json" -type f | head -n 1)
+
+if [ -n "$STATS_JSON" ]; then
+    STATS_BASENAME="${OUTPUT_FILENAME%.*}_stats.csv"
+    STATS_CSV="$OUTPUT_DIR/$STATS_BASENAME"
+
+    TRAINING_TIME=$(python3 -c "import json; d=json.load(open('$STATS_JSON')); print(d.get('training_time_s', ''))")
+    SAMPLING_TIME=$(python3 -c "import json; d=json.load(open('$STATS_JSON')); print(d.get('sampling_time_s', ''))")
+    GRID_RES=$(python3 -c "import json; d=json.load(open('$STATS_JSON')); print(d.get('grid_resolution', ''))")
+
+    echo "input_mesh,output_mesh,training_time_s,sampling_time_s,grid_resolution" > "$STATS_CSV"
+    echo "$MESH_PATH,$OUTPUT_DIR/$OUTPUT_FILENAME,$TRAINING_TIME,$SAMPLING_TIME,$GRID_RES" >> "$STATS_CSV"
+
+    echo "Statistics written to: $STATS_CSV"
+else
+    echo "Warning: Could not find statistics.json in $TRAIN_DIR"
+fi

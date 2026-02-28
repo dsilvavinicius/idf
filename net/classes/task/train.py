@@ -235,3 +235,17 @@ class Train(Task):
                 print(f"Epoch times avg:{avg_time} min:{min_time} max:{max_time}")
         if not self.runner.perf_test:
             self.ckpt_io.save(f'Train_latest.ckpt', epoch=ep, it=it)
+
+        # Store training time for statistics
+        self.runner.training_time = time.time() - train_start_time
+
+        # Write statistics.json with timing and resolution info
+        stats = {
+            "training_time_s": self.runner.training_time,
+            "sampling_time_s": getattr(self.runner, 'sampling_time', None),
+            "grid_resolution": getattr(self.runner, 'sampling_resolution', None),
+        }
+        stats_path = os.path.join(self.folder, "statistics.json")
+        with open(stats_path, 'w') as f:
+            json.dump(stats, f, indent=2)
+        self.runner.py_logger.info(f"Statistics written to {stats_path}")

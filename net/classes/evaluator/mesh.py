@@ -1,4 +1,5 @@
 import sys
+import time
 from typing import Dict
 import numpy as np
 from evaluator.evaluator import Evaluator
@@ -49,7 +50,10 @@ class Mesh(Evaluator):
             self.runner.py_logger.info(f"Generating {self.name} with resolution {self.resolution}")
             #this is plain wrong
             #with torch.no_grad():
+            sampling_start = time.time()
             verts, faces, _ = self.evaluate_mesh_value(data)
+            self.runner.sampling_time = time.time() - sampling_start
+            self.runner.sampling_resolution = self.resolution
             if(self.compute_chamfer):
                 Compute_Chamfer(trimesh.Trimesh(verts.astype(np.float32),faces),self.runner,f"{self.name}_chamfer_{{0}}_{{1}}", True)
             self.runner.logger.log_mesh(self.name, verts.reshape([1, -1, 3]),
